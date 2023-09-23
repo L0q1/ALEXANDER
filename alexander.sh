@@ -77,7 +77,11 @@ if [[ ! -d $cfg_folder ]]; then
 fi
 
 # CHECK: set config file / create if doesn't exist
-if [[ -w $cfg_path ]]; then
+if [[ -s $cfg_path ]]; then
+  desktop_notification "ERROR" "'$cfg_name' exists but is not empty."
+  bash_error "ERROR: Config exists but is not empty:" "$cfg_path"
+  exit 27
+elif [[ -w $cfg_path ]]; then
   bash_success "Config set:" "$cfg_path"
 elif [[ ! -f $cfg_path ]]; then
   bash_warn "Config file '$cfg_name' not found. Creating..."
@@ -104,7 +108,7 @@ write_command() {
 }
 
 # FUNCTION: cleanup on dirty exit
-function dirty_exit() {
+dirty_exit() {
   desktop_notification "Warning!" "Script terminated."
   bash_warn "\nScript terminated."
   :>"$cfg_path"
@@ -129,6 +133,7 @@ while [[ -w $cfg_path ]]; do
 
   case $user_input in
     'help')
+      bash_info "help" "Print available commands."
       bash_info "status" "Check script status."
       bash_info "stop, quit, exit" "Stop the script." ;;
     'status')
