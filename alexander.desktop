@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Terminal=true
-Name=ALEXANDER
-Comment=A Linux Equivalent of Source Auto-Named Demo Recorder
-#Icon=
-Path=/path/to/script/directory
-Exec=./alexander.sh; read -n1 -p "Press any key to continue..."
