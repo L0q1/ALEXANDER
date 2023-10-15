@@ -108,7 +108,7 @@ write_command() {
 }
 
 # FUNCTION: cleanup on dirty exit
-function dirty_exit() {
+dirty_exit() {
   desktop_notification "Warning!" "Script terminated."
   bash_warn "\nScript terminated."
   :>"$cfg_path"

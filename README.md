@@ -1,26 +1,24 @@
 # What is it?
-[SANDER](https://www.dyxtra.com/sander) but for Linux.
+[SANDER](https://www.dyxtra.com/sander) for Linux. Written in bash.
 
 # What does it do?
-First it tries to create its own, empty .cfg file (**sander.cfg** by default).
+It tries to create its own, empty .cfg file (**sander.cfg** by default).
 
-Then, every 30 seconds it checks if specified in the script game process is currently running.
+Then it checks every 30 seconds if specified in the script process is running.
 
-If it finds the process it is looking for, it starts writing a record command to **sander.cfg**.
+If it finds the process, it starts writing a record command with unique timestamp to **sander.cfg** every 10 seconds.
 
-Timestamp included in the command refreshes every 10 seconds to prevent new demos from overwriting old ones.
-
-When the script is closed it wipes **sander.cfg** to prevent any potential demo overwrites.
+When the script is stopped, **sander.cfg** is wiped to prevent any accidental demo overwrites.
 
 # Installation
 1. Download the script
-   - `git clone https://github.com/L0q1/ALEXANDER ~/Downloads/ALEXANDER`
-2. Make it executable
+   - `git clone https://github.com/L0q1/ALEXANDER`
+   - `wget 'https://raw.githubusercontent.com/L0q1/ALEXANDER/master/alexander.sh' -O alexander.sh`
+   - `curl 'https://raw.githubusercontent.com/L0q1/ALEXANDER/master/alexander.sh' > alexander.sh`
+2. Make it executable *(if not using git clone)*
    - `chmod +x alexander.sh`
 
-You can place the script wherever you want.
-
-Set the script to launch on system boot if you want to always be ready to record.
+Script comes preconfigured for Left 4 Dead 2.
 
 # Usage
 Execute the script.
@@ -31,13 +29,8 @@ exec sander.cfg
 ```
 
 If you want to record all your matches, assign the config execution to your scoreboard key.
-
-Code below does exactly that, feel free to put it in your autoexec.
 ```
 alias "+showexec" "+showscores; exec sander.cfg"
 alias "-showexec" "-showscores"
 bind "TAB" "+showexec"
 ```
-
-# Disclaimer
-I have never seen SANDER's source code.
