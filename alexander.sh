@@ -17,17 +17,17 @@ check_for_games='30' # integer # check for the process specified above every X s
 refresh_command='10' # integer # refresh the timestamp every X seconds if process is running
 
 # Shell colors
-cred="\e[31m"
-cgreen="\e[32m"
-cyellow="\e[33m"
-cblue="\e[34m"
-cstop="\e[0m"
+cred="\033[31m"
+cgreen="\033[32m"
+cyellow="\033[33m"
+cblue="\033[34m"
+cstop="\033[0m"
 
 # FUNCTION: bash messages
 bash_error() { echo -e "${cred}$1${cstop} $2"; }
 bash_warn() { echo -e "${cyellow}$1${cstop} $2"; }
 bash_success() { echo -e "${cgreen}$1${cstop} $2"; }
-bash_info() { echo -e "${cblue}$1${cstop} $2"; }
+bash_info() { echo -e "${cblue}$1${cstop} $2 ${cblue}$3${cstop} $4"; }
 
 # FUNCTION: send libnotify notification to desktop if possible
 desktop_notification() {
@@ -37,9 +37,9 @@ desktop_notification() {
 }
 
 # CHECK: is ALEXANDER already running
-if pidof -x "$(basename -- "$0")" -o $$ > /dev/null; then
-  desktop_notification "ALEXANDER is already running!" "Process ID: $(pidof -x "$(basename -- "$0")" -o $$)"
-  bash_warn "The script is already running." "PID: $(pidof -x "$(basename -- "$0")" -o $$)"
+if pidof -x "$(basename -- $0)" -o $$ > /dev/null 2>&1; then
+  desktop_notification "ALEXANDER is already running!" "Process ID: $(pidof -x "$(basename -- $0)" -o $$)"
+  bash_warn "This script is already running. PID:" "$(pidof -x "$(basename -- $0)" -o $$)"
   exit 114
 fi
 
@@ -47,21 +47,21 @@ fi
 is_valid_int() {
   case $1 in
     ''|*[!0-9]*|0)
-      desktop_notification "ERROR" "'$2' has invalid value."
+      desktop_notification "ERROR" "Invalid value '$1' in '$2' setting.\nInsert a number (in seconds) instead."
       bash_error "ERROR: '$2' is assigned an invalid value:" "$1"
       exit 22 ;;
     *) ;;
   esac
 }
 
-# CHECK: are check_for_games and refresh_command present and valid
+# CHECK: are variables present and valid
 is_valid_int $check_for_games check_for_games
 is_valid_int $refresh_command refresh_command
 
-# FIX: remove last '/' in directory path if present
+# Remove last '/' in directory path if present
 cfg_folder=${cfg_folder%/}
 
-# FIX: append .cfg extension to cfg_name if absent
+# Append '.cfg' extension to config name if absent
 if [[ $cfg_name != *.cfg ]]; then
   cfg_name=$cfg_name.cfg
 fi
@@ -71,7 +71,7 @@ cfg_path=$cfg_folder/$cfg_name
 
 # CHECK: does config directory exist
 if [[ ! -d $cfg_folder ]]; then
-  desktop_notification "ERROR" "Directory not found."
+  desktop_notification "ERROR" "Config directory not found."
   bash_error "ERROR: Directory not found:" "$cfg_folder"
   exit 2
 fi
@@ -119,35 +119,43 @@ dirty_exit() {
 trap "dirty_exit" 2 15
 
 # Start scanning & user input
-bash_success "ALEXANDER is looking for the process:" "$process_name"
+work_var=0
+bash_success "Looking for the process:" "$process_name"
 while [[ -w $cfg_path ]]; do
   if pgrep -x $process_name > /dev/null; then
+    if [[ $work_var == 0 ]]; then
+      bash_success "Process found!"
+      work_var=1
+    fi
     write_command
-    work_var=1
-    read -t $refresh_command user_input
+    read -r -t $refresh_command user_input
   else
-    :>"$cfg_path"
-    work_var=0
-    read -t $check_for_games user_input
+    if [[ $work_var == 1 ]]; then
+      bash_warn "Process lost."
+      :>"$cfg_path"
+      work_var=0
+    fi
+    read -r -t $check_for_games user_input
   fi
 
   case $user_input in
-    'help')
-      bash_info "help" "Print available commands."
-      bash_info "status" "Check script status."
-      bash_info "stop, quit, exit" "Stop the script." ;;
-    'status')
+    help)
+      bash_info "help             " "print all available commands"
+      bash_info "status           " "check script status"
+      bash_info "quit, stop, exit " "stop the script" ;;
+    status)
       if [[ $work_var == 0 ]]; then
-        bash_info "LOOKING FOR:" "$process_name"
+        bash_info "Looking for" "$process_name" "every" "$check_for_games"s
       else
-        bash_info "WRITING TO:" "$cfg_path"
+        bash_info "Found" "$process_name"
+        bash_info "Updating timestamp in" "$cfg_name" "every" "$refresh_command"s
       fi ;;
-    'stop'|'quit'|'exit')
+    quit|stop|exit)
       bash_success "Script stopped."
       :>"$cfg_path"
       exit 0 ;;
     '') ;;
-    *) echo "Type 'help' for available commands." ;;
+    *) bash_info "Type" "help" "for a list of available commands." ;;
   esac
 done
 
