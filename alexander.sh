@@ -10,16 +10,16 @@
 
 settings() {
   # string # Path to cfg folder
-  cfg_folder="$HOME/.steam/steam/steamapps/common/Left 4 Dead 2/left4dead2/cfg"
+  # cfg_folder="$HOME/.steam/steam/steamapps/common/Left 4 Dead 2/left4dead2/cfg"
+
+  # string # Start refreshing the timestamp when this process is found
+  # process_name='hl2_linux'
 
   # string # Name of the file to write the command to (must be unique)
   cfg_file='sander.cfg'
 
   # string # Demo name with default prefix: autorec_2023-06-04-12-53-04.dem
   demo_prefix='autorec_'
-
-  # string # Start refreshing the timestamp when this process is found
-  process_name='hl2_linux'
 
   # integer # Check for the process every X seconds
   check_for_games='30'
@@ -40,10 +40,10 @@ help_message() {
   echo "Customizations can be applied inside the script in the 'settings' function."
 }
 
-bash_error() { echo -e "${cred}$1${cstop} ${@:2}"; }
-bash_warn() { echo -e "${cyellow}$1${cstop}" ${@:2}; }
-bash_success() { echo -e "${cgreen}$1${cstop}" ${@:2}; }
-bash_info() { echo -e "${cblue}$1${cstop} $2 ${cblue}$3${cstop} ${@:4}"; }
+bash_error() { echo -e "${cred}${1}${cstop} ${@:2}"; }
+bash_warn() { echo -e "${cyellow}${1}${cstop}" ${@:2}; }
+bash_success() { echo -e "${cgreen}${1}${cstop}" ${@:2}; }
+bash_info() { echo -e "${cblue}${1}${cstop} ${2} ${cblue}${3}${cstop} ${@:4}"; }
 
 desktop_notification() {
   if command -v notify-send > /dev/null 2>&1; then
@@ -64,9 +64,73 @@ cleanup_dirty_exit() {
   exit 130
 }
 
+find_games() {
+
+  local config="${HOME}/.config/alexander.conf"
+  local game="$1"
+  local search_path="$2"
+
+  if [[ -f $config ]]; then
+    source "$config"
+  else
+    mkdir -p "${config%/*}"
+    :>"$config"
+  fi
+
+  case $game in
+    '[Ll]4[Dd]2' | '[Ll]eft *4 *[Dd]ead *2' )
+      if [[ $l4d2 ]]; then
+        break
+      else
+        local search_string_cfg="/left4dead2/cfg"
+      fi
+      ;;
+    '[Ll]4[Dd]' | '[Ll]eft *4 *[Dd]ead' )
+      if [[ $l4d ]]; then
+        break
+      else
+        local search_string_cfg="/left4dead/cfg"
+      fi
+      ;;
+    *)
+      bash_error "Game unsupported or not specified. Choose a supported game."
+      exit 22
+      ;;
+  esac
+
+  if [[ ! $search_path ]]; then
+    bash_warn "Search path not specified, looking in user's home directory..."
+    local search_path="$HOME"
+  fi
+
+  while true; do
+    local game_cfg_path="$(find "$search_path" -type d "${exclusions[@]}" -exec test -e '{}'"$search_string_cfg" \; -print -quit 2>/dev/null)"
+
+    if [[ ! $game_cfg_path ]]; then
+      bash_error "Game not found. Try setting the path again."
+      exit 2
+    else
+      bash_success "Path found: ${game_cfg_path}"
+    fi
+    read -r -t 10 -p "Is this path correct? (y/N) " user_choice
+    case "$user_choice" in
+      [yY]|[yY][eE][sS])
+        break
+        ;;
+      *)
+        local exclusions=("${exclusions[@]}" "-not" "-path" "${game_cfg_path}")
+        unset game_cfg_path
+        ;;
+    esac
+  done
+
+  unset user_choice
+
+}
+
 main() {
 
-  version=1.3.0
+  version=1.4.0
 
   cred="\033[31m"
   cgreen="\033[32m"
