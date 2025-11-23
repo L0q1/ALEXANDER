@@ -7,10 +7,32 @@
 #
 # Inspired by Sander Dijkstra's "SANDER" (https://dyxtra.github.io/sander)
 ##################################################################################################
+# MIT License
+#
+# Copyright (c) 2023 L0q1
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+##################################################################################################
 
 settings() {
   # string # Config for games found by ALEXANDER via '--populate' flag
-  custom_paths="${HOME}/.config/alexander.conf"
+  paths_config="${HOME}/.config/alexander.conf"
 
   # string # Name of the file to write the command to (must be unique)
   cfg_file='sander.cfg'
@@ -41,52 +63,63 @@ help_message() {
   echo
   echo "Options:"
   echo "  -e, --edit        Edit the script and exit."
-  echo "  -h, --help        Display help and exit."
-  echo "  -p, --populate    Populate ALEXANDER's config with game paths and exit."
+  echo "  -h, --help        Display this help and exit."
+  echo "  -p, --populate    Populate ALEXANDER's config with game paths."
   echo "  -v, --version     Show version and exit."
   echo
   echo "Customizations can be applied inside the script in the 'settings' function."
+  echo "Custom game paths are stored in: $paths_config"
 }
-
-bash_error() { echo -e "${cred}${1}${cstop} ${*:2}"; }
-bash_warn() { echo -e "${cyellow}${1}${cstop} ${*:2}"; }
-bash_success() { echo -e "${cgreen}${1}${cstop} ${*:2}"; }
-bash_info() { echo -e "${cblue}${1}${cstop} ${2} ${cblue}${3}${cstop} ${*:4}"; }
 
 desktop_notification() {
   if command -v notify-send > /dev/null 2>&1; then
-    notify-send -a ALEXANDER "$@"
+    notify-send -a ALEXANDER "$@" > /dev/null 2>&1
   fi
 }
 
+bash_error() { echo -e "${cred}${1}${cstop} ${*:2}"; desktop_notification "$@"; }
+bash_warn() { echo -e "${cyellow}${1}${cstop} ${*:2}"; desktop_notification "$@"; }
+bash_success() { echo -e "${cgreen}${1}${cstop} ${*:2}"; }
+bash_info() { echo -e "${cblue}${1}${cstop} ${2} ${cblue}${3}${cstop} ${*:4}"; }
+
 write_command() {
-  timestamp=$(date +"%Y-%m-%d-%H-%M-%S")
+  timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
   cfg_command="record ${demo_prefix}${timestamp}"
   echo "$cfg_command" > "$cfg_path"
 }
 
 cleanup_dirty_exit() {
-  desktop_notification "Warning!" "Script terminated."
-  bash_warn "\nScript terminated."
+  bash_success "\nScript terminated."
   rm "$cfg_path"
   exit 130
 }
 
-populate_config() {
-  bash_info "Generating game paths @ '$custom_paths'"
+merge_with() {
+  local IFS="$1"
+  shift
+  echo "$*"
+}
 
-  if mkdir -p "${custom_paths%/*}" && [[ -w ${custom_paths%/*} ]]; then
-    bash_success "Working directory set: '${custom_paths}'"
-  else
-    bash_error "Couldn't access '${custom_paths%/*}'. Exiting."
+check_root() {
+  if [[ $(id -u) -eq 0 ]]; then
+    bash_error "ඞ"
+    exit $?
+  fi
+}
+
+populate_config() {
+  bash_info "Generating game paths @ $paths_config"
+
+  if ! mkdir -p "${paths_config%/*}" > /dev/null 2>&1 || [[ ! -w ${paths_config%/*} ]]; then
+    bash_error "ERROR: Access denied!" "${paths_config%/*}"
     exit 13
   fi
 
-  if [[ -s $custom_paths ]]; then
-    read -r -p "Wipe config first? (if yes, type full 'yes') " user_choice
+  if [[ -f $paths_config ]] && [[ -s $paths_config ]]; then
+    read -r -p "Wipe config first? (if yes, type full 'yes'): " user_choice
     case "$user_choice" in
       '[yY][eE][sS]')
-        :>"$custom_paths"
+        :>"$paths_config"
         ;;
       *)
         ;;
@@ -94,7 +127,7 @@ populate_config() {
   fi
 
   while true; do
-    read -r -p "Full path to search in (def. '~/.local/share/Steam/steamapps') " user_choice
+    read -r -p "Full path to search in (def. '~/.local/share/Steam/steamapps'): " user_choice
     case "$user_choice" in
       '')
         local search_path="${HOME}/.local/share/Steam/steamapps"
@@ -103,7 +136,7 @@ populate_config() {
       *)
         local search_path="$user_choice"
         if [[ ! -d $search_path ]]; then
-          bash_error "Invalid directory."
+          bash_warn "Invalid directory" "'$search_path'"
         else
           break
         fi
@@ -115,41 +148,25 @@ populate_config() {
   path_id[l4d]="left4dead/cfg"
   path_id[l4d2]="left4dead2/cfg"
 
+  local game_path
   for game in "${!path_id[@]}"; do
-    while true; do
-      # local game_path="$(find "$search_path" -type d "${exclusions[@]}" -path "*/${path_id[$game]}" -print -quit 2>/dev/null)"
-      local game_path
-      game_path="$(find "$search_path" -type d -path "*/${path_id[$game]}" -print -quit 2>/dev/null)"
-      # if [[ ! $game_path ]]; then
-        # bash_warn "Skipping '$game' (not found)..."
-        # break
-      # else
-        echo "${game}_cfg=${game_path}"
-        # read -r -t 30 -p "Write to config? (Y/n) " user_choice
-        # case "$user_choice" in
-        #   [nN]|[nN][oO])
-        #     local exclusions=("${exclusions[@]}" "-not" "-path" "${game_path}")
-        #     unset game_path
-        #     ;;
-        #   *)
-            echo "${game}_cfg='${game_path}'" >> "$custom_paths"
-            break
-        #     ;;
-        # esac
-      # fi
-    done
-  # unset user_choice game_path
-  unset game_path
+    game_path="$(find "$search_path" -type d -path "*/${path_id[$game]}" -print -quit 2>/dev/null)"
+    if [[ $game_path ]]; then
+      echo "${game}_cfg=${game_path}"
+      echo "${game}_cfg='${game_path}'" >> "$paths_config"
+    else
+      bash_info "Skipping '$game'." "Not found."
+    fi
+    unset game_path
   done
 
-  sort "$custom_paths" -o "$custom_paths"
+  # sort "$paths_config" -o "$paths_config"
   bash_success "Config generated!"
-  bash_info "If any of the paths above are wrong or missing, regenerate or edit '${custom_paths}' by hand."
 }
 
 main() {
 
-  version=2.1.0
+  version=2.2.0
 
   cred="\033[31m"
   cgreen="\033[32m"
@@ -157,13 +174,12 @@ main() {
   cblue="\033[34m"
   cstop="\033[0m"
 
-  # Setup
+  check_root
   settings
   game_settings
 
-  # shellcheck source=/dev/null
-  if [[ -f $custom_paths ]]; then
-    source "$custom_paths"
+  if [[ $paths_config == */ ]] || [[ -d $paths_config ]]; then
+    paths_config="${paths_config%/}/alexander.conf"
   fi
 
   # Parse all positional parameters
@@ -172,7 +188,6 @@ main() {
 
       '-p'|'--populate')
         populate_config
-        exit 0
         ;;
 
       '-e'|'--edit')
@@ -195,23 +210,22 @@ main() {
         echo " \__,_|_|\___/_/\_\__,_|_| |_|\__,_|\___|_|.sh"
         echo
         echo "A Linux Equivalent of Source Auto-Named Demo Recorder v${version}"
-        echo "Copyright (c) 2023 L0q1 - MIT license"
         echo
         exit 0
         ;;
 
       'l4d')
         cfg_folder="$l4d_cfg"
-        process_name=("${l4d_process[@]}")
+        proc_name=("${l4d_process[@]}")
         ;;
 
       'l4d2')
         cfg_folder="$l4d2_cfg"
-        process_name=("${l4d2_process[@]}")
+        proc_name=("${l4d2_process[@]}")
         ;;
 
       *)
-        echo "Invalid option: \"$1\""
+        echo "Invalid option: '$1'"
         help_message
         exit 1
         ;;
@@ -220,53 +234,77 @@ main() {
     shift
   done
 
-  # Cleanup
+  if [[ -f $paths_config ]]; then
+    source "$paths_config"
+  else
+    bash_warn "Paths to games not found!" "Using script's defaults."
+    bash_info "Run '${0##*/} --populate' to generate game paths."
+  fi
+
+  if [[ ! $cfg_folder ]] || [[ ! ${proc_name[*]} ]]; then
+    while true; do
+      read -r -p "Game to load (lowercase abbreviation): " user_choice
+      case "$user_choice" in
+        'l4d')
+          cfg_folder="$l4d_cfg"
+          proc_name=("${l4d_process[@]}")
+          break
+          ;;
+
+        'l4d2')
+          cfg_folder="$l4d2_cfg"
+          proc_name=("${l4d2_process[@]}")
+          break
+          ;;
+
+        *)
+          ;;
+      esac
+    done
+  fi
+
   cfg_folder="${cfg_folder%/}"
   [[ $cfg_file != *.cfg ]] && cfg_file="${cfg_file}.cfg"
   cfg_path="${cfg_folder}/${cfg_file}"
 
   for int in $check_for_games $refresh_command; do
     if [[ ! $int =~ ^[0-9]+$ ]] || [[ $int -le 0 ]]; then
-      desktop_notification "ERROR" "Invalid integer in settings."
-      bash_error "ERROR: Invalid integer in settings" "'$int'"
+      bash_error "ERROR: Invalid integer in settings!" "$int"
       exit 22
     fi
   done
 
   if [[ ! -d $cfg_folder ]]; then
-    desktop_notification "ERROR" "Directory not found."
-    bash_error "ERROR: Directory not found" "'$cfg_folder'"
+    bash_error "ERROR: Config directory not found!" "$cfg_folder"
     exit 2
   elif [[ ! -w $cfg_folder ]]; then
-    desktop_notification "ERROR" "Cannot access directory."
-    bash_error "ERROR: Directory is read-only" "'$cfg_folder'"
+    bash_error "ERROR: Config directory is read-only!" "$cfg_folder"
     exit 13
   fi
 
   if [[ -f $cfg_path ]]; then
-    desktop_notification "ERROR" "Not allowed to overwrite '$cfg_file'."
-    bash_error "ERROR: File exists" "'$cfg_path'"
+    bash_error "ERROR: Config file exists (and may be important)!" "$cfg_path"
     exit 17
   else
     :>"$cfg_path"
-    bash_success "Config set:" "'$cfg_path'"
+    bash_success "Config set:" "$cfg_path"
   fi
 
   trap "cleanup_dirty_exit" SIGINT SIGTERM
 
   # Run the program
-  bash_success "Looking for:" "'$process_name'"
+  bash_success "Looking for:" "${proc_name[*]}"
 
   while [[ -w $cfg_path ]]; do
-    if pgrep -x "$process_name" > /dev/null 2>&1; then
+    if pgrep -f ".*$(merge_with "|" "${proc_name[@]}").*" > /dev/null 2>&1; then
       if [[ ! -s $cfg_path ]]; then
-        bash_success "Process '$process_name' found!"
+        bash_success "Process found!"
       fi
       write_command
       read -r -t $refresh_command user_input
     else
       if [[ -s $cfg_path ]]; then
-        bash_warn "Process lost."
+        bash_info "Process lost."
         :>"$cfg_path"
       fi
       read -r -t $check_for_games user_input
@@ -275,7 +313,7 @@ main() {
     case $user_input in
       's'|'status')
         if [[ ! -s $cfg_path ]]; then
-          bash_info "Looking for" "'$process_name'" "every" "${check_for_games}s"
+          bash_info "Looking for" "${proc_name[*]}" "every" "${check_for_games}s"
         else
           bash_info "Updating timestamp in" "'$cfg_file'" "every" "${refresh_command}s"
         fi
@@ -295,17 +333,14 @@ main() {
   done
 
   if [[ ! -f $cfg_path ]]; then
-    desktop_notification "Unexpected exit!" "Config deleted."
-    bash_warn "Exiting. Config deleted."
+    bash_warn "Exiting." "Config deleted."
     exit 2
   elif [[ ! -w $cfg_path ]]; then
-    desktop_notification "Unexpected exit!" "Config permissions changed."
-    bash_warn "Exiting. Config permissions changed."
+    bash_warn "Exiting." "Config permissions changed."
     rm -f "$cfg_path"
     exit 13
   else
-    desktop_notification "Unexpected exit!" "Reason unknown."
-    bash_warn "Exiting. Reason unknown."
+    bash_warn "Exiting." "Reason unknown."
     rm "$cfg_path"
     exit 1
   fi
