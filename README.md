@@ -1,34 +1,46 @@
 # What is it?
-[SANDER](https://www.dyxtra.com/sander) for Linux. Written in bash.
+[SANDER](https://dyxtra.github.io/sander) for Linux. Written in bash.
 
-# What does it do?
-It tries to create its own, empty .cfg file (**sander.cfg** by default).
-
-Then it checks every 30 seconds if specified in the script process is running.
-
-If it finds the process, it starts writing a record command with unique timestamp to **sander.cfg** every 10 seconds.
-
-When the script is stopped, **sander.cfg** is wiped to prevent any accidental demo overwrites.
+# How does it work?
+1. Performs a bunch of checks to make sure nothing unexpected happens
+2. Creates empty .cfg file inside game's .../cfg directory
+3. Runs a loop that looks for specified game's process(es)
+4. When process is found, starts writing a record command with unique timestamp to its .cfg file
+5. When process is lost, wipes the .cfg file so user doesn't accidentally overwrite the last demo
 
 # Installation
-1. Download the script
-   - `git clone https://github.com/L0q1/ALEXANDER`
-   - `wget 'https://raw.githubusercontent.com/L0q1/ALEXANDER/master/alexander.sh' -O alexander.sh`
-   - `curl 'https://raw.githubusercontent.com/L0q1/ALEXANDER/master/alexander.sh' > alexander.sh`
-2. Make it executable *(if not using git clone)*
-   - `chmod +x alexander.sh`
+[Download the stable release](../../../tags), or:
+```
+git clone https://github.com/L0q1/alexander
+```
+```
+wget 'https://raw.githubusercontent.com/L0q1/alexander/master/alexander.sh' -O alexander.sh && chmod +x alexander.sh
+```
+```
+curl 'https://raw.githubusercontent.com/L0q1/alexander/master/alexander.sh' > alexander.sh && chmod +x alexander.sh
+```
 
-Script comes preconfigured for Left 4 Dead 2.
+## Dependencies
+- bash
+- *(optional)* libnotify - desktop notifications
 
 # Usage
-Execute the script.
+0. *(optional)* Open the script and edit the **settings()** function
+```
+./alexander.sh --edit
+```
 
-To start recording a demo, open the in-game console and execute the config created by ALEXANDER.
+1. Launch the script specifying the game you want to monitor (lowercase abbreviation)
+```
+./alexander.sh l4d2
+```
+
+2. Open the in-game console and execute the config created by ALEXANDER to start recording
 ```
 exec sander.cfg
 ```
 
-If you want to record all your matches, assign the config execution to your scoreboard key.
+or assign config execution to your scoreboard key for convenience
 ```
 alias "+showexec" "+showscores; exec sander.cfg"
 alias "-showexec" "-showscores"
