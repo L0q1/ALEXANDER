@@ -64,7 +64,7 @@ bash_success() { echo -e "${cgreen}${1}${cstop} ${*:2}"; }
 bash_info() { echo -e "${cblue}${1}${cstop} ${2} ${cblue}${3}${cstop} ${*:4}"; }
 
 write_command() {
-  timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
+  timestamp=$(date +"%Y-%m-%d-%H-%M-%S")
   cfg_command="record ${demo_prefix}${timestamp}"
   echo "$cfg_command" > "$cfg_path"
 }
