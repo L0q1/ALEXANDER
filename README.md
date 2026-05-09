@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> **Repository and its development has been moved to [Codeberg](https://codeberg.org/l0q1/ALEXANDER).**
+
 # What is it?
 [SANDER](https://dyxtra.github.io/sander) for Linux. Written in bash.
 
@@ -11,13 +14,13 @@
 # Installation
 [Download a stable release](../../tags), or:
 ```
-git clone https://github.com/L0q1/alexander
+git clone https://github.com/l0q1/ALEXANDER
 ```
 ```
-wget 'https://raw.githubusercontent.com/L0q1/alexander/master/alexander.sh' -O alexander.sh && chmod +x alexander.sh
+wget 'https://raw.githubusercontent.com/l0q1/ALEXANDER/master/alexander.sh' -O alexander.sh && chmod +x alexander.sh
 ```
 ```
-curl 'https://raw.githubusercontent.com/L0q1/alexander/master/alexander.sh' > alexander.sh && chmod +x alexander.sh
+curl 'https://raw.githubusercontent.com/l0q1/ALEXANDER/master/alexander.sh' > alexander.sh && chmod +x alexander.sh
 ```
 
 ## Dependencies
